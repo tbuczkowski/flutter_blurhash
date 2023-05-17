@@ -1,9 +1,40 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
+void prepShader({
+  required ui.FragmentShader shader,
+  required String blurHash,
+  required Size size,
+  double punch = 1.0,
+}) {
+  _validateBlurHash(blurHash);
+  final sizeFlag = _decode83(blurHash[0]);
+  final numY = (sizeFlag / 9).floor() + 1;
+  final numX = (sizeFlag % 9) + 1;
+  final quantisedMaximumValue = _decode83(blurHash[1]);
+  final maximumValue = (quantisedMaximumValue + 1) / 166;
+  final List<List<double>> colors = List.filled(numX * numY, <double>[]);
+  for (var i = 0; i < colors.length; i++) {
+    if (i == 0) {
+      final value = _decode83(blurHash.substring(2, 6));
+      colors[i] = _decodeDC(value);
+    } else {
+      final value = _decode83(blurHash.substring(4 + i * 2, 6 + i * 2));
+      colors[i] = _decodeAC(value, maximumValue * punch);
+    }
+  }
+
+  shader.setFloat(0, size.width.toDouble());
+  shader.setFloat(1, size.height.toDouble());
+  final List<double> expandedColors = colors.expand((element) => element).toList();
+  for (int i = 0; i < expandedColors.length; i++) {
+    shader.setFloat(i + 2, expandedColors[i]);
+  }
+}
 
 Future<Uint8List> blurHashDecode({
   required String blurHash,
@@ -34,14 +65,12 @@ Future<Uint8List> blurHashDecode({
 
   final bytesPerRow = width * 4;
   final pixels = Uint8List(bytesPerRow * height);
-
   int p = 0;
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       var r = .0;
       var g = .0;
       var b = .0;
-
       for (int j = 0; j < numY; j++) {
         for (int i = 0; i < numX; i++) {
           final basis = cos((pi * x * i) / width) * cos((pi * y * j) / height);
@@ -51,18 +80,15 @@ Future<Uint8List> blurHashDecode({
           b += color[2] * basis;
         }
       }
-
       final intR = _linearTosRGB(r);
       final intG = _linearTosRGB(g);
       final intB = _linearTosRGB(b);
-
       pixels[p++] = intR;
       pixels[p++] = intG;
       pixels[p++] = intB;
       pixels[p++] = 255;
     }
   }
-
   return Future.value(pixels);
 }
 

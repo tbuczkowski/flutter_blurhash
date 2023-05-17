@@ -24,9 +24,12 @@ class BlurHash extends StatefulWidget {
     this.httpHeaders = const {},
     this.curve = Curves.easeOut,
     this.errorBuilder,
+    required this.useShader,
   })  : assert(decodingWidth > 0),
         assert(decodingHeight != 0),
         super(key: key);
+
+  final bool useShader;
 
   /// Callback when hash is decoded
   final VoidCallback? onDecoded;
@@ -149,11 +152,45 @@ class BlurHashState extends State<BlurHash> {
       );
 
   /// Decode the blurhash then display the resulting Image
-  Widget buildBlurHashBackground() => FutureBuilder<ui.Image>(
-        future: _image,
-        builder: (ctx, snap) =>
-            snap.hasData ? Image(image: UiImage(snap.data!), fit: widget.imageFit) : Container(color: widget.color),
-      );
+  Widget buildBlurHashBackground() => widget.useShader
+      ? FutureBuilder<ui.FragmentShader>(
+          future: ui.FragmentProgram.fromAsset('shaders/blurhash.frag')
+              .then((ui.FragmentProgram program) => program.fragmentShader()),
+          builder: (BuildContext context, snapshot) {
+            if (snapshot.hasData) {
+              return CustomPaint(
+                painter: BlurHashPainter(snapshot.data!, widget.hash),
+              );
+            } else {
+              return Container(color: widget.color);
+            }
+          })
+      : FutureBuilder<ui.Image>(
+          future: _image,
+          builder: (ctx, snap) =>
+              snap.hasData ? Image(image: UiImage(snap.data!), fit: widget.imageFit) : Container(color: widget.color),
+        );
+}
+
+class BlurHashPainter extends CustomPainter {
+  final ui.FragmentShader shader;
+  final String hash;
+
+  BlurHashPainter(this.shader, this.hash);
+
+  @override
+  void paint(ui.Canvas canvas, ui.Size size) {
+    prepShader(
+      shader: shader,
+      blurHash: hash,
+      size: size,
+    );
+    final Paint paint = Paint()..shader = shader;
+    canvas.drawRect(Offset.zero & size, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // Inner display details & controls
