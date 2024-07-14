@@ -180,7 +180,7 @@ class BlurHashPainter extends CustomPainter {
 
   @override
   void paint(ui.Canvas canvas, ui.Size size) {
-    prepShader(
+    decodeBlurHashForShader(
       shader: shader,
       blurHash: hash,
       size: size,
@@ -212,8 +212,7 @@ class _DisplayImage extends StatefulWidget {
   _DisplayImageState createState() => _DisplayImageState();
 }
 
-class _DisplayImageState extends State<_DisplayImage>
-    with SingleTickerProviderStateMixin {
+class _DisplayImageState extends State<_DisplayImage> with SingleTickerProviderStateMixin {
   late Animation<double> opacity;
   late AnimationController controller;
 
@@ -250,8 +249,7 @@ class UiImage extends ImageProvider<UiImage> {
   const UiImage(this.image, {this.scale = 1.0});
 
   @override
-  Future<UiImage> obtainKey(ImageConfiguration configuration) =>
-      SynchronousFuture<UiImage>(this);
+  Future<UiImage> obtainKey(ImageConfiguration configuration) => SynchronousFuture<UiImage>(this);
 
   @override
   ImageStreamCompleter loadImage(UiImage key, ImageDecoderCallback decode) =>
@@ -273,6 +271,5 @@ class UiImage extends ImageProvider<UiImage> {
   int get hashCode => Object.hash(image.hashCode, scale);
 
   @override
-  String toString() =>
-      '$runtimeType(${describeIdentity(image)}, scale: $scale)';
+  String toString() => '$runtimeType(${describeIdentity(image)}, scale: $scale)';
 }
